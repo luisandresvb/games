@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>NEON DROP</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --neon-cyan: #00f5ff;
+  --neon-pink: #ff0090;
+  --neon-yellow: #fff200;
+  --neon-green: #39ff14;
+  --neon-orange: #ff6600;
+  --neon-purple: #bf00ff;
+  --neon-red: #ff003c;
+  --neon-blue: #0044ff;
+  --bg: #050510;
+  --grid-color: rgba(0,245,255,0.04);
+  --panel-bg: rgba(5,5,20,0.85);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  font-family: 'Share Tech Mono', monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#game-wrapper {
+  position: relative;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  z-index: 1;
+}
+
+#left-panel {
+  width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+}
+
+#right-panel {
+  width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.panel-box {
+  background: var(--panel-bg);
+  border: 1px solid rgba(0,245,255,0.2);
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.panel-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: rgba(0,245,255,0.5);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.panel-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 12px var(--neon-cyan);
+  line-height: 1;
+}
+
+.panel-value.best {
+  font-size: 18px;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 12px var(--neon-yellow);
+}
+
+.panel-value.level {
+  color: var(--neon-green);
+  text-shadow: 0 0 12px var(--neon-green);
+}
+
+#combo-box .panel-value {
+  color: var(--neon-pink);
+  text-shadow: 0 0 12px var(--neon-pink);
+  font-size: 28px;
+  transition: transform 0.1s;
+}
+
+#combo-box.pop .panel-value {
+  transform: scale(1.3);
+}
+
+#next-box {
+  text-align: center;
+}
+
+#next-canvas {
+  display: block;
+  margin: 0 auto;
+  width: 80px;
+  height: 80px;
+}
+
+#danger-bar-wrap {
+  background: rgba(255,0,60,0.1);
+  border: 1px solid rgba(255,0,60,0.3);
+  border-radius: 2px;
+  height: 8px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+#danger-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--neon-green), var(--neon-yellow), var(--neon-red));
+  width: 0%;
+  transition: width 0.3s;
+}
+
+#canvas-container {
+  position: relative;
+  flex-shrink: 0;
+}
+
+#game-canvas {
+  display: block;
+  border: 1px solid rgba(0,245,255,0.3);
+  border-radius: 2px;
+  box-shadow: 0 0 30px rgba(0,245,255,0.1), inset 0 0 60px rgba(0,0,0,0.5);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+#drop-indicator {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.6), transparent);
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: left 0.05s;
+}
+
+#danger-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255,0,60,0.5);
+  pointer-events: none;
+}
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5,5,20,0.92);
+  z-index: 10;
+  border-radius: 2px;
+}
+
+#overlay.hidden { display: none; }
+
+.overlay-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 36px;
+  font-weight: 900;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 30px var(--neon-cyan), 0 0 60px var(--neon-cyan);
+  letter-spacing: 0.15em;
+  margin-bottom: 6px;
+  animation: pulse-title 2s ease-in-out infinite;
+}
+
+.overlay-sub {
+  font-size: 11px;
+  color: rgba(0,245,255,0.5);
+  letter-spacing: 0.2em;
+  margin-bottom: 40px;
+}
+
+.overlay-score-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.2em;
+  margin-bottom: 4px;
+}
+
+.overlay-score-val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 42px;
+  font-weight: 900;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 20px var(--neon-yellow);
+  margin-bottom: 6px;
+}
+
+.overlay-best {
+  font-size: 11px;
+  color: rgba(255,242,0,0.5);
+  margin-bottom: 40px;
+}
+
+.start-btn {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--bg);
+  background: var(--neon-cyan);
+  border: none;
+  padding: 14px 36px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  box-shadow: 0 0 20px var(--neon-cyan);
+  text-transform: uppercase;
+}
+
+.start-btn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 40px var(--neon-cyan);
+}
+
+.start-btn:active { transform: scale(0.97); }
+
+.instructions {
+  margin-top: 28px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 0.12em;
+  text-align: center;
+  line-height: 1.9;
+}
+
+@keyframes pulse-title {
+  0%, 100% { text-shadow: 0 0 30px var(--neon-cyan), 0 0 60px var(--neon-cyan); }
+  50% { text-shadow: 0 0 50px var(--neon-cyan), 0 0 100px var(--neon-cyan), 0 0 150px rgba(0,245,255,0.3); }
+}
+
+.score-pop {
+  position: absolute;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  pointer-events: none;
+  animation: score-float 0.9s ease-out forwards;
+  text-shadow: 0 0 10px currentColor;
+  z-index: 5;
+}
+
+@keyframes score-float {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-70px) scale(1.4); }
+}
+
+#merge-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 2px;
+  opacity: 0;
+  z-index: 4;
+}
+
+#merge-flash.flash {
+  animation: flash-anim 0.2s ease-out forwards;
+}
+
+@keyframes flash-anim {
+  0% { opacity: 0.25; }
+  100% { opacity: 0; }
+}
+
+.shape-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+#lives-row {
+  display: flex;
+  gap: 6px;
+}
+
+.life-pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--neon-pink);
+  box-shadow: 0 0 6px var(--neon-pink);
+  transition: opacity 0.3s;
+}
+
+.life-pip.dead {
+  background: rgba(255,255,255,0.1);
+  box-shadow: none;
+}
+
+#streaks-box .panel-value {
+  color: var(--neon-orange);
+  text-shadow: 0 0 12px var(--neon-orange);
+}
+
+/* ── Mobile layout ── */
+@media (max-width: 699px) {
+  body {
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  #game-wrapper {
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 6px;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #left-panel,
+  #right-panel {
+    width: 100%;
+    max-width: 480px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding-top: 0;
+  }
+
+  #left-panel .panel-box,
+  #right-panel .panel-box {
+    flex: 1 1 auto;
+    min-width: 52px;
+    padding: 5px 7px;
+  }
+
+  .panel-label {
+    font-size: 7px;
+    letter-spacing: 0.15em;
+    margin-bottom: 2px;
+  }
+
+  .panel-value {
+    font-size: 15px;
+  }
+
+  .panel-value.best {
+    font-size: 13px;
+  }
+
+  .panel-value.level {
+    font-size: 15px;
+  }
+
+  #combo-box .panel-value {
+    font-size: 18px;
+  }
+
+  #streaks-box .panel-value {
+    font-size: 15px;
+  }
+
+  #next-canvas {
+    width: 46px;
+    height: 46px;
+  }
+
+  #next-box {
+    min-width: 62px;
+  }
+
+  .legend-item {
+    font-size: 8px;
+    gap: 4px;
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  #lives-row {
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+
+  .life-pip {
+    width: 9px;
+    height: 9px;
+  }
+
+  .overlay-title {
+    font-size: 28px;
+  }
+
+  .overlay-sub {
+    font-size: 9px;
+    margin-bottom: 24px;
+  }
+
+  .overlay-score-val {
+    font-size: 34px;
+  }
+
+  .overlay-best {
+    margin-bottom: 24px;
+  }
+
+  .start-btn {
+    padding: 12px 28px;
+    font-size: 12px;
+  }
+
+  .instructions {
+    margin-top: 18px;
+    font-size: 9px;
+  }
+
+  .pc-hint { display: none; }
+  .touch-hint { display: inline; }
+}
+
+/* Hide shape legend on very small screens to save space */
+@media (max-width: 699px) and (max-height: 620px) {
+  #right-panel #shape-box {
+    display: none;
+  }
+  #streaks-box {
+    display: none;
+  }
+}
+
+/* PC hint visibility defaults */
+.touch-hint { display: none; }
+.pc-hint { display: inline; }
+</style>
+</head>
+<body>
+
+<div id="game-wrapper">
+
+  <div id="left-panel">
+    <div class="panel-box">
+      <div class="panel-label">Score</div>
+      <div class="panel-value" id="score-display">0</div>
+    </div>
+    <div class="panel-box">
+      <div class="panel-label">Best</div>
+      <div class="panel-value best" id="best-display">0</div>
+    </div>
+    <div class="panel-box">
+      <div class="panel-label">Level</div>
+      <div class="panel-value level" id="level-display">1</div>
+    </div>
+    <div class="panel-box" id="combo-box">
+      <div class="panel-label">Combo</div>
+      <div class="panel-value" id="combo-display">x1</div>
+    </div>
+    <div class="panel-box" id="streaks-box">
+      <div class="panel-label">Merges</div>
+      <div class="panel-value" id="merge-display">0</div>
+    </div>
+  </div>
+
+  <div id="canvas-container">
+    <canvas id="game-canvas" width="320" height="560"></canvas>
+    <div id="drop-indicator"></div>
+    <div id="danger-line"></div>
+    <div id="merge-flash"></div>
+    <div id="overlay">
+      <div class="overlay-title">NEON DROP</div>
+      <div class="overlay-sub">PHYSICS · MERGE · SURVIVE</div>
+      <div id="final-score-wrap" style="display:none; text-align:center; margin-bottom:40px;">
+        <div class="overlay-score-label">FINAL SCORE</div>
+        <div class="overlay-score-val" id="final-score">0</div>
+        <div class="overlay-best" id="final-best"></div>
+      </div>
+      <button class="start-btn" id="start-btn" onclick="startGame()">START GAME</button>
+      <div class="instructions">
+        <span class="pc-hint">MOVE MOUSE → AIM &nbsp;|&nbsp; CLICK → DROP</span>
+        <span class="touch-hint">DRAG → AIM &nbsp;|&nbsp; TAP → DROP</span><br>
+        SAME COLOR MERGES → CHAIN REACTION<br>
+        DON'T LET SHAPES OVERFLOW
+      </div>
+    </div>
+  </div>
+
+  <div id="right-panel">
+    <div class="panel-box" id="next-box">
+      <div class="panel-label">Next</div>
+      <canvas id="next-canvas" width="80" height="80"></canvas>
+    </div>
+    <div class="panel-box">
+      <div class="panel-label">Danger</div>
+      <div id="danger-bar-wrap"><div id="danger-bar"></div></div>
+      <div style="font-size:9px; color:rgba(255,60,60,0.5); margin-top:6px; letter-spacing:0.1em;">OVERFLOW RISK</div>
+    </div>
+    <div class="panel-box">
+      <div class="panel-label">Lives</div>
+      <div id="lives-row">
+        <div class="life-pip" id="life0"></div>
+        <div class="life-pip" id="life1"></div>
+        <div class="life-pip" id="life2"></div>
+      </div>
+    </div>
+    <div class="panel-box" id="shape-box">
+      <div class="panel-label">Shapes</div>
+      <div class="shape-legend" id="shape-legend"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let Engine, Render, Runner, Bodies, Body, World, Events, Composite;
+
+const CANVAS_W = 320;
+const CANVAS_H = 560;
+const WALL_T = 40;
+const DROP_Y = 60;
+const DANGER_Y = 100;
+const SHAPE_TYPES = [
+  { name: 'Spark',   radius: 14, color: '#00f5ff', shadow: '#00f5ff', score: 10,  sides: 0 },
+  { name: 'Pulse',   radius: 18, color: '#ff0090', shadow: '#ff0090', score: 20,  sides: 3 },
+  { name: 'Glyph',  radius: 22, color: '#fff200', shadow: '#fff200', score: 35,  sides: 4 },
+  { name: 'Prism',  radius: 27, color: '#39ff14', shadow: '#39ff14', score: 55,  sides: 5 },
+  { name: 'Vortex', radius: 33, color: '#ff6600', shadow: '#ff6600', score: 80,  sides: 6 },
+  { name: 'Nova',   radius: 40, color: '#bf00ff', shadow: '#bf00ff', score: 120, sides: 0 },
+  { name: 'Comet',  radius: 48, color: '#ff003c', shadow: '#ff003c', score: 180, sides: 3 },
+];
+
+let engine, runner, canvas, ctx, nextCanvas, nextCtx;
+let gameRunning = false;
+let score = 0, best = 0, combo = 1, merges = 0, level = 1, lives = 3;
+let currentType = 0, nextType = 0;
+let mouseX = CANVAS_W / 2;
+let canDrop = true;
+let dropCooldown = 600;
+let bodies = [];
+let particles = [];
+let animFrame;
+let canvasScale = 1;
+
+function pickType() {
+  const maxType = Math.min(Math.floor(level * 1.2), SHAPE_TYPES.length - 2);
+  return Math.floor(Math.random() * (maxType + 1));
+}
+
+function updateCanvasScale() {
+  const mobile = window.innerWidth < 700;
+  let availW, availH;
+
+  if (mobile) {
+    availW = window.innerWidth - 16;
+    availH = window.innerHeight - 130;
+  } else {
+    availW = window.innerWidth - 360;
+    availH = window.innerHeight - 60;
+  }
+
+  canvasScale = Math.min(availW / CANVAS_W, availH / CANVAS_H, mobile ? 1.4 : 1.8);
+  canvasScale = Math.max(canvasScale, 0.45);
+
+  const displayW = Math.floor(CANVAS_W * canvasScale);
+  const displayH = Math.floor(CANVAS_H * canvasScale);
+
+  canvas.style.width  = displayW + 'px';
+  canvas.style.height = displayH + 'px';
+
+  const container = document.getElementById('canvas-container');
+  container.style.width  = displayW + 'px';
+  container.style.height = displayH + 'px';
+
+  document.getElementById('danger-line').style.top =
+    Math.floor(DANGER_Y * canvasScale) + 'px';
+
+  document.getElementById('drop-indicator').style.height =
+    Math.floor(DROP_Y * canvasScale) + 'px';
+}
+
+function initEngine() {
+  if (engine) {
+    Runner.stop(runner);
+    Engine.clear(engine);
+  }
+
+  engine = Engine.create({ gravity: { y: 1.8 } });
+  runner = Runner.create();
+
+  const wallOpts = { isStatic: true, friction: 0.3, restitution: 0.3, render: { visible: false } };
+  const floor = Bodies.rectangle(CANVAS_W/2, CANVAS_H + WALL_T/2, CANVAS_W + WALL_T*2, WALL_T, wallOpts);
+  const wallL = Bodies.rectangle(-WALL_T/2, CANVAS_H/2, WALL_T, CANVAS_H*2, wallOpts);
+  const wallR = Bodies.rectangle(CANVAS_W + WALL_T/2, CANVAS_H/2, WALL_T, CANVAS_H*2, wallOpts);
+  World.add(engine.world, [floor, wallL, wallR]);
+
+  Events.on(engine, 'collisionStart', handleCollisions);
+
+  bodies = [];
+}
+
+function handleCollisions(event) {
+  const pairs = event.pairs;
+  const toMerge = [];
+
+  pairs.forEach(pair => {
+    const { bodyA, bodyB } = pair;
+    if (!bodyA.gameData || !bodyB.gameData) return;
+    if (bodyA.gameData.type === bodyB.gameData.type && !bodyA.gameData.merging && !bodyB.gameData.merging) {
+      if (bodyA.gameData.type < SHAPE_TYPES.length - 1) {
+        toMerge.push([bodyA, bodyB]);
+        bodyA.gameData.merging = true;
+        bodyB.gameData.merging = true;
+      }
+    }
+  });
+
+  toMerge.forEach(([a, b]) => scheduleMerge(a, b));
+}
+
+function scheduleMerge(a, b) {
+  setTimeout(() => {
+    if (!a.gameData || !b.gameData) return;
+    const mx = (a.position.x + b.position.x) / 2;
+    const my = (a.position.y + b.position.y) / 2;
+    const oldType = a.gameData.type;
+    const oldColor = SHAPE_TYPES[oldType].color;
+    const newType = oldType + 1;
+    const st = SHAPE_TYPES[newType];
+
+    removeBody(a);
+    removeBody(b);
+
+    addParticleBurst(mx, my, oldColor);
+
+    const newBody = spawnBody(mx, Math.min(my, CANVAS_H - 60), newType, true);
+    Body.setVelocity(newBody, { x: (Math.random()-0.5)*2, y: -3 });
+
+    merges++;
+    combo = Math.min(combo + 1, 8);
+    const pts = st.score * combo;
+    addScore(pts, mx, my, oldColor);
+    updateUI();
+
+    document.getElementById('merge-flash').style.background = oldColor;
+    triggerFlash();
+    triggerCombo();
+
+    setTimeout(() => { combo = Math.max(combo - 1, 1); updateUI(); }, 3000);
+  }, 80);
+}
+
+function spawnBody(x, y, typeIdx, isMerged = false) {
+  const st = SHAPE_TYPES[typeIdx];
+  const r = st.radius;
+  let body;
+
+  if (st.sides === 0) {
+    body = Bodies.circle(x, y, r, {
+      restitution: 0.35, friction: 0.4, frictionAir: 0.01, density: 0.003
+    });
+  } else {
+    body = Bodies.polygon(x, y, st.sides, r, {
+      restitution: 0.35, friction: 0.4, frictionAir: 0.01, density: 0.003
+    });
+  }
+
+  body.gameData = { type: typeIdx, merging: false, spawnTime: Date.now() };
+  bodies.push(body);
+  World.add(engine.world, body);
+  return body;
+}
+
+function removeBody(b) {
+  const idx = bodies.indexOf(b);
+  if (idx !== -1) bodies.splice(idx, 1);
+  World.remove(engine.world, b);
+  b.gameData = null;
+}
+
+function dropShape() {
+  if (!canDrop || !gameRunning) return;
+  const clampedX = Math.max(50, Math.min(CANVAS_W - 50, mouseX));
+  spawnBody(clampedX, DROP_Y, currentType);
+  currentType = nextType;
+  nextType = pickType();
+  canDrop = false;
+  setTimeout(() => { canDrop = true; }, dropCooldown);
+  updateUI();
+}
+
+function addScore(pts, x, y, color) {
+  score += pts;
+  if (score > best) best = score;
+  level = Math.floor(score / 500) + 1;
+  dropCooldown = Math.max(350, 600 - (level - 1) * 30);
+  spawnScorePop(pts, x, y, color);
+}
+
+function spawnScorePop(pts, x, y, color) {
+  const container = document.getElementById('canvas-container');
+  const el = document.createElement('div');
+  el.className = 'score-pop';
+  el.style.color = color;
+  el.style.left = (x * canvasScale - 20) + 'px';
+  el.style.top  = (y * canvasScale - 20) + 'px';
+  el.textContent = '+' + pts;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 900);
+}
+
+function addParticleBurst(x, y, color) {
+  for (let i = 0; i < 14; i++) {
+    const angle = (Math.PI * 2 / 14) * i + Math.random() * 0.4;
+    const speed = 2 + Math.random() * 4;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      color,
+      life: 1,
+      r: 2 + Math.random() * 3
+    });
+  }
+}
+
+function triggerFlash() {
+  const el = document.getElementById('merge-flash');
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.classList.add('flash');
+}
+
+function triggerCombo() {
+  const box = document.getElementById('combo-box');
+  box.classList.remove('pop');
+  void box.offsetWidth;
+  box.classList.add('pop');
+  setTimeout(() => box.classList.remove('pop'), 150);
+}
+
+function updateUI() {
+  document.getElementById('score-display').textContent = score;
+  document.getElementById('best-display').textContent = best;
+  document.getElementById('level-display').textContent = level;
+  document.getElementById('combo-display').textContent = 'x' + combo;
+  document.getElementById('merge-display').textContent = merges;
+  updateLives();
+  drawNextShape();
+}
+
+function updateLives() {
+  for (let i = 0; i < 3; i++) {
+    const pip = document.getElementById('life' + i);
+    pip.classList.toggle('dead', i >= lives);
+  }
+}
+
+function drawNextShape() {
+  const st = SHAPE_TYPES[nextType];
+  nextCtx.clearRect(0, 0, 80, 80);
+  nextCtx.save();
+  nextCtx.translate(40, 40);
+
+  nextCtx.shadowColor = st.color;
+  nextCtx.shadowBlur = 15;
+  nextCtx.fillStyle = st.color;
+  nextCtx.strokeStyle = st.color;
+  nextCtx.lineWidth = 2;
+
+  const r = Math.min(st.radius * 0.9, 28);
+
+  if (st.sides === 0) {
+    nextCtx.beginPath();
+    nextCtx.arc(0, 0, r, 0, Math.PI * 2);
+    nextCtx.fill();
+  } else {
+    drawPolygon(nextCtx, 0, 0, r, st.sides);
+    nextCtx.fill();
+  }
+
+  nextCtx.restore();
+}
+
+function drawPolygon(ctx2, x, y, r, sides) {
+  ctx2.beginPath();
+  for (let i = 0; i < sides; i++) {
+    const angle = (Math.PI * 2 / sides) * i - Math.PI / 2;
+    const px = x + r * Math.cos(angle);
+    const py = y + r * Math.sin(angle);
+    if (i === 0) ctx2.moveTo(px, py); else ctx2.lineTo(px, py);
+  }
+  ctx2.closePath();
+}
+
+let lastDangerTrigger = 0;
+
+function checkDanger() {
+  if (!gameRunning) return;
+  const now = Date.now();
+  const GRACE = 1200;
+
+  let highestY = CANVAS_H;
+  bodies.forEach(b => {
+    if (!b.gameData) return;
+    if (now - b.gameData.spawnTime < GRACE) return;
+    if (b.position.y < highestY) highestY = b.position.y;
+  });
+
+  const danger = Math.max(0, Math.min(100, ((DANGER_Y + 60 - highestY) / 80) * 100));
+  document.getElementById('danger-bar').style.width = danger + '%';
+
+  if (highestY < DANGER_Y && bodies.length > 2 && now - lastDangerTrigger > 1500) {
+    lastDangerTrigger = now;
+    lives--;
+    updateLives();
+    if (lives <= 0) {
+      endGame();
+    } else {
+      let topBody = null, topY = CANVAS_H;
+      bodies.forEach(b => {
+        if (!b.gameData) return;
+        if (now - b.gameData.spawnTime < GRACE) return;
+        if (b.position.y < topY) { topY = b.position.y; topBody = b; }
+      });
+      if (topBody) removeBody(topBody);
+    }
+  }
+}
+
+function render() {
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+  ctx.fillStyle = '#050510';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  ctx.strokeStyle = 'rgba(255,0,60,0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 8]);
+  ctx.beginPath();
+  ctx.moveTo(0, DANGER_Y);
+  ctx.lineTo(CANVAS_W, DANGER_Y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.1;
+    p.life -= 0.04;
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, Math.max(0, p.r * p.life), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+
+  const allBodies = engine ? Composite.allBodies(engine.world) : [];
+  allBodies.forEach(body => {
+    if (!body.gameData) return;
+    const st = SHAPE_TYPES[body.gameData.type];
+    const verts = body.vertices;
+
+    ctx.save();
+    ctx.shadowColor = st.shadow;
+    ctx.shadowBlur = 18;
+
+    ctx.fillStyle = st.color + '99';
+    ctx.strokeStyle = st.color;
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.moveTo(verts[0].x, verts[0].y);
+    for (let i = 1; i < verts.length; i++) ctx.lineTo(verts[i].x, verts[i].y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.beginPath();
+    ctx.moveTo(verts[0].x, verts[0].y);
+    for (let i = 1; i < verts.length; i++) ctx.lineTo(verts[i].x, verts[i].y);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+  });
+
+  if (gameRunning) {
+    const st = SHAPE_TYPES[currentType];
+    const clampedX = Math.max(50, Math.min(CANVAS_W - 50, mouseX));
+    ctx.save();
+    ctx.globalAlpha = canDrop ? 0.7 : 0.25;
+    ctx.shadowColor = st.color;
+    ctx.shadowBlur = canDrop ? 20 : 6;
+    ctx.fillStyle = st.color;
+    ctx.strokeStyle = st.color;
+    ctx.lineWidth = 2;
+
+    if (st.sides === 0) {
+      ctx.beginPath();
+      ctx.arc(clampedX, DROP_Y, st.radius, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      drawPolygonCtx(ctx, clampedX, DROP_Y, st.radius, st.sides);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  if (gameRunning && engine) {
+    Engine.update(engine, 1000/60);
+    checkDanger();
+  }
+
+  animFrame = requestAnimationFrame(render);
+}
+
+function drawPolygonCtx(ctx2, x, y, r, sides) {
+  ctx2.beginPath();
+  for (let i = 0; i < sides; i++) {
+    const angle = (Math.PI * 2 / sides) * i - Math.PI / 2;
+    if (i === 0) ctx2.moveTo(x + r * Math.cos(angle), y + r * Math.sin(angle));
+    else ctx2.lineTo(x + r * Math.cos(angle), y + r * Math.sin(angle));
+  }
+  ctx2.closePath();
+}
+
+function startGame() {
+  score = 0; combo = 1; merges = 0; level = 1; lives = 3;
+  canDrop = true; dropCooldown = 600;
+  bodies = []; particles = [];
+  currentType = pickType();
+  nextType = pickType();
+  gameRunning = true;
+
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('final-score-wrap').style.display = 'none';
+  document.getElementById('start-btn').textContent = 'PLAY AGAIN';
+  initEngine();
+  updateUI();
+}
+
+function endGame() {
+  gameRunning = false;
+  if (score > best) best = score;
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('final-best').textContent = 'BEST: ' + best;
+  document.getElementById('final-score-wrap').style.display = 'block';
+  document.getElementById('overlay').classList.remove('hidden');
+}
+
+function buildLegend() {
+  const container = document.getElementById('shape-legend');
+  SHAPE_TYPES.slice(0, 5).forEach(st => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    const dot = document.createElement('div');
+    dot.className = 'legend-dot';
+    dot.style.background = st.color;
+    dot.style.boxShadow = '0 0 6px ' + st.color;
+    const lbl = document.createElement('span');
+    lbl.textContent = st.name + ' ×2';
+    item.appendChild(dot);
+    item.appendChild(lbl);
+    container.appendChild(item);
+  });
+}
+
+function getCanvasCoords(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (clientX - rect.left) * (CANVAS_W / rect.width),
+    y: (clientY - rect.top)  * (CANVAS_H / rect.height),
+  };
+}
+
+function updateDropIndicator(gameX) {
+  const clampedX = Math.max(50, Math.min(CANVAS_W - 50, gameX));
+  const indicator = document.getElementById('drop-indicator');
+  indicator.style.left   = (clampedX * canvasScale) + 'px';
+  indicator.style.height = (DROP_Y * canvasScale) + 'px';
+}
+
+function init() {
+  ({ Engine, Render, Runner, Bodies, Body, World, Events, Composite } = Matter);
+
+  canvas = document.getElementById('game-canvas');
+  ctx = canvas.getContext('2d');
+  nextCanvas = document.getElementById('next-canvas');
+  nextCtx = nextCanvas.getContext('2d');
+
+  updateCanvasScale();
+  window.addEventListener('resize', updateCanvasScale);
+
+  canvas.addEventListener('mousemove', e => {
+    const { x } = getCanvasCoords(e.clientX, e.clientY);
+    mouseX = x;
+    updateDropIndicator(mouseX);
+  });
+
+  canvas.addEventListener('click', dropShape);
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const { x } = getCanvasCoords(e.touches[0].clientX, e.touches[0].clientY);
+    mouseX = x;
+    updateDropIndicator(mouseX);
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    const { x } = getCanvasCoords(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+    mouseX = x;
+    dropShape();
+  }, { passive: false });
+
+  buildLegend();
+  best = parseInt(localStorage.getItem('neonDropBest') || '0');
+  document.getElementById('best-display').textContent = best;
+
+  render();
+}
+
+setInterval(() => {
+  if (score > parseInt(localStorage.getItem('neonDropBest') || '0')) {
+    localStorage.setItem('neonDropBest', score);
+  }
+}, 5000);
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>

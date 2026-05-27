@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HEXFALL</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e0b08;--panel:#1c1610;--border:#3a2e1a;
+  --amber:#f5a623;--amber2:#ff7c00;--dim:#5a4830;--text:#f0d9a8;
+  --c0:#ff6b6b;--c1:#ffd93d;--c2:#69db7c;--c3:#4dabf7;--c4:#cc5de8;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;}
+body{background:var(--bg);font-family:'Outfit',sans-serif;color:var(--text);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;gap:10px;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 70% 40% at 50% 110%,rgba(245,166,35,.08) 0%,transparent 70%);}
+
+#topbar{display:flex;gap:24px;align-items:center;z-index:1;}
+.ts{text-align:center;}
+.ts-l{font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:2px;}
+.ts-v{font-size:28px;font-weight:900;line-height:1;}
+.ts-v.a{color:var(--amber);}
+.ts-v.g{color:var(--c2);}
+.ts-v.b{color:var(--c3);}
+
+#layout{display:flex;gap:12px;align-items:flex-start;z-index:1;}
+.side{width:106px;display:flex;flex-direction:column;gap:9px;}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
+.cl{font-size:9px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:5px;}
+.cv{font-size:24px;font-weight:900;line-height:1;}
+
+#pips{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;}
+.pip{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--border);
+  transition:background .2s,border-color .2s,box-shadow .2s;}
+.pip.on{border-color:var(--amber);background:var(--amber);box-shadow:0 0 6px var(--amber);}
+
+#combo-val{font-size:28px;font-weight:900;color:var(--c4);line-height:1;
+  transition:transform .1s;}
+#combo-val.pop{transform:scale(1.4);}
+
+#board-wrap{position:relative;border-radius:14px;overflow:hidden;flex-shrink:0;
+  border:1.5px solid var(--border);
+  box-shadow:0 0 60px rgba(245,166,35,.06),0 20px 60px rgba(0,0,0,.7);}
+#gc{display:block;cursor:crosshair;max-width:100%;}
+
+#blast-ov{position:absolute;inset:0;border-radius:13px;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at center,rgba(255,210,80,.3) 0%,transparent 70%);}
+#blast-ov.pop{animation:bpop .45s ease-out forwards;}
+@keyframes bpop{0%{opacity:1}100%{opacity:0}}
+
+.floater{position:absolute;font-weight:900;font-size:17px;pointer-events:none;z-index:30;
+  animation:fup .85s ease-out forwards;text-shadow:0 2px 8px rgba(0,0,0,.8);}
+@keyframes fup{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-50px) scale(1.25)}}
+
+#ov{position:absolute;inset:0;border-radius:13px;background:rgba(14,11,8,.95);
+  backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;z-index:50;padding:22px 18px;text-align:center;}
+#ov.hidden{display:none;}
+.ov-t{font-size:50px;font-weight:900;line-height:.9;margin-bottom:5px;
+  background:linear-gradient(135deg,var(--amber),var(--amber2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.ov-s{font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:var(--dim);margin-bottom:18px;}
+.ov-b{font-size:11.5px;color:rgba(240,217,168,.5);line-height:2.2;margin-bottom:20px;max-width:200px;}
+.ov-b b{color:var(--text);font-weight:700;}
+.ov-fv{font-size:50px;font-weight:900;color:var(--amber);line-height:1;margin-bottom:4px;}
+.ov-fl{font-size:9px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin-bottom:18px;}
+.btn{font-family:'Outfit',sans-serif;font-weight:700;font-size:15px;letter-spacing:.1em;
+  color:var(--bg);background:linear-gradient(135deg,var(--amber),var(--amber2));
+  border:none;padding:12px 48px;border-radius:100px;cursor:pointer;
+  box-shadow:0 4px 24px rgba(245,166,35,.3);transition:transform .1s,box-shadow .15s;}
+.btn:hover{transform:scale(1.04);box-shadow:0 6px 36px rgba(245,166,35,.5);}
+.btn:active{transform:scale(.97);}
+
+#mpad{display:none;gap:6px;margin-top:6px;flex-wrap:wrap;justify-content:center;}
+@media(max-width:820px){
+  .side{width:88px;}
+  #layout{gap:8px;}
+}
+@media(max-width:600px){
+  html,body{overflow-y:auto;height:auto;}
+  body{justify-content:flex-start;padding:10px 0 16px;}
+  #topbar{gap:12px;padding:0 8px;flex-wrap:wrap;justify-content:center;}
+  #layout{flex-direction:column;align-items:center;gap:0;}
+  .side{display:none;}
+  #board-wrap{width:calc(100vw - 16px);max-width:420px;border-radius:10px;}
+  #gc{width:100%;height:auto;}
+  #mpad{display:flex;}
+  .ts-v{font-size:20px;}
+  .ts-l{font-size:8px;}
+}
+.mb{font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;
+  background:var(--panel);border:1px solid var(--border);color:var(--text);
+  padding:9px 13px;border-radius:8px;cursor:pointer;user-select:none;
+  -webkit-tap-highlight-color:transparent;}
+.mb:active{background:var(--border);}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="ts"><div class="ts-l">Score</div><div class="ts-v a" id="el-sc">0</div></div>
+  <div class="ts"><div class="ts-l">Best</div><div class="ts-v" id="el-bs" style="font-size:19px">0</div></div>
+  <div class="ts"><div class="ts-l">Level</div><div class="ts-v b" id="el-lv">1</div></div>
+  <div class="ts"><div class="ts-l">Blasts</div><div class="ts-v g" id="el-rg">0</div></div>
+</div>
+
+<div id="layout">
+  <div class="side">
+    <div class="card">
+      <div class="cl">Current</div>
+      <canvas id="cc" width="82" height="82"></canvas>
+    </div>
+    <div class="card">
+      <div class="cl">Next</div>
+      <canvas id="nc" width="82" height="82"></canvas>
+    </div>
+    <div class="card">
+      <div class="cl">Progress</div>
+      <div id="pips"></div>
+    </div>
+    <div class="card">
+      <div class="cl">Combo</div>
+      <div id="combo-val">×1</div>
+    </div>
+  </div>
+
+  <div id="board-wrap">
+    <canvas id="gc"></canvas>
+    <div id="blast-ov"></div>
+    <div id="ov">
+      <div class="ov-t">HEX<br>FALL</div>
+      <div class="ov-s">drop · match · blast</div>
+      <div class="ov-b" id="ov-body">
+        Click a column to drop<br>a <b>colored hex</b> there.<br><br>
+        Connect <b>4+ same color</b> hexes → <b>BLAST!</b><br><br>
+        Chain blasts for <b>huge combos</b>.<br>Don't fill the top!
+      </div>
+      <div id="ov-res" style="display:none">
+        <div class="ov-fv" id="ov-sc">0</div>
+        <div class="ov-fl">final score</div>
+      </div>
+      <button class="btn" onclick="startGame()">PLAY</button>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="card">
+      <div class="cl">Colors</div>
+      <div id="legend" style="display:flex;flex-direction:column;gap:5px;margin-top:2px;"></div>
+    </div>
+    <div class="card">
+      <div class="cl">Controls</div>
+      <div style="font-size:10px;line-height:2.1;color:var(--dim);">
+        <b style="color:var(--text)">Click</b> column<br>
+        ←→ aim<br>
+        Space drop<br>
+        1–9 column
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="mpad">
+  <button class="mb" ontouchstart="mbAim(-1)" ontouchend="mbStop()">◀</button>
+  <button class="mb" onclick="userDrop()">DROP</button>
+  <button class="mb" ontouchstart="mbAim(1)"  ontouchend="mbStop()">▶</button>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// HEXFALL  —  clean rewrite
+//
+// GRID: pointy-top hexagons in an "offset rows" layout.
+//   COLS=9, ROWS=13.
+//   Odd rows are shifted right by half a hex width.
+//   board[row][col] = color index (0-4) or -1 (empty).
+//
+// NEIGHBORS: standard offset-row pointy-top neighbors.
+//   Each interior cell has exactly 6 neighbors.
+//
+// MECHANIC: drop one colored hex into a column each turn.
+//   It falls to the lowest empty cell in that column.
+//   After landing, scan for connected groups of 4+ same color → BLAST.
+//   Cleared cells fall (gravity), then re-scan for chains.
+//
+// GAME OVER: any cell in row 0 is filled.
+// ─────────────────────────────────────────────────────────────
+
+const COLS = 9, ROWS = 13;
+const HR   = 24;                     // hex circumradius (pointy-top)
+const HW   = HR * Math.sqrt(3);      // hex width  (pointy-top)
+const HH   = HR * 2;                 // hex height (pointy-top)
+const ROW_H = HH * 0.75;            // vertical row spacing
+
+const COLORS = ['#ff6b6b','#ffd93d','#69db7c','#4dabf7'];
+const CNAMES = ['Coral','Yellow','Mint','Sky'];
+const MIN_GROUP = 4; // match 4+ connected same-color hexes to clear
+
+// Canvas pixel size
+const PW = Math.ceil(HW * COLS + HW * 0.5 + 8);
+const PH = Math.ceil(ROW_H * ROWS + HH * 0.25 + 8);
+
+// Pixel center of cell [row][col]
+function cellX(row, col) {
+  const offset = (row % 2 === 1) ? HW * 0.5 : 0;
+  return col * HW + HW * 0.5 + offset + 4;
+}
+function cellY(row, col) {
+  return row * ROW_H + HR + 4;
+}
+
+// 6 neighbors for offset-row pointy-top grid
+function neighbors(row, col) {
+  const odd = row % 2 === 1;
+  const cands = [
+    [row - 1, col + (odd ? 0 : -1)],
+    [row - 1, col + (odd ? 1 :  0)],
+    [row,     col - 1],
+    [row,     col + 1],
+    [row + 1, col + (odd ? 0 : -1)],
+    [row + 1, col + (odd ? 1 :  0)],
+  ];
+  return cands.filter(([r, c]) => r >= 0 && r < ROWS && c >= 0 && c < COLS);
+}
+
+// ── STATE ──────────────────────────────────────────────────────
+let board;        // [row][col]
+let curColor, nextColor;
+let aimCol;
+let fallingAnim;  // {col, startY, endY, row, color} or null
+let score, best, rings, level, combo;
+let gameRunning;
+let animId, lastTime;
+let mbTimer = null;
+
+let gc, ctx, nc, nctx, cc, cctx;
+
+// ── SETUP ──────────────────────────────────────────────────────
+function setup() {
+  gc = document.getElementById('gc');
+  gc.width  = PW;
+  gc.height = PH;
+  ctx = gc.getContext('2d');
+
+  nc = document.getElementById('nc');
+  nctx = nc.getContext('2d');
+  cc = document.getElementById('cc');
+  cctx = cc.getContext('2d');
+
+  best = parseInt(localStorage.getItem('hf2best') || '0');
+  document.getElementById('el-bs').textContent = best;
+
+  buildLegend();
+  setupInput();
+  drawIdle();
+}
+
+function buildLegend() {
+  const el = document.getElementById('legend');
+  COLORS.forEach((c, i) => {
+    const d = document.createElement('div');
+    d.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:10px;color:var(--dim)';
+    d.innerHTML = `<div style="width:9px;height:9px;border-radius:50%;background:${c};box-shadow:0 0 5px ${c}88;flex-shrink:0"></div>${CNAMES[i]}`;
+    el.appendChild(d);
+  });
+}
+
+function setupInput() {
+  gc.addEventListener('mousemove', e => {
+    const rect = gc.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    // find closest column center
+    let best2 = Infinity, bc2 = 0;
+    for (let c = 0; c < COLS; c++) {
+      const cx = cellX(0, c);
+      const d  = Math.abs(mx - cx);
+      if (d < best2) { best2 = d; bc2 = c; }
+    }
+    aimCol = bc2;
+  });
+  gc.addEventListener('click', () => userDrop());
+}
+
+function drawIdle() {
+  ctx.fillStyle = '#1a1410';
+  ctx.fillRect(0, 0, PW, PH);
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      drawHexAt(ctx, r, c, null, 0.6);
+}
+
+// ── GAME START ─────────────────────────────────────────────────
+function startGame() {
+  board = Array.from({length: ROWS}, () => new Array(COLS).fill(-1));
+  score = 0; rings = 0; level = 1; combo = 0;
+  aimCol = Math.floor(COLS / 2);
+  curColor  = randC();
+  nextColor = randC();
+  fallingAnim = null;
+  gameRunning = true;
+
+  document.getElementById('ov').classList.add('hidden');
+  document.getElementById('ov-body').style.display = '';
+  document.getElementById('ov-res').style.display  = 'none';
+  document.querySelector('.btn').textContent = 'PLAY AGAIN';
+
+  document.removeEventListener('keydown', onKey);
+  document.addEventListener('keydown', onKey);
+
+  updateUI();
+  drawCurrent();
+  drawNext();
+
+  if (animId) cancelAnimationFrame(animId);
+  lastTime = performance.now();
+  (function loop(now) {
+    if (!gameRunning) return;
+    const dt = Math.min(now - lastTime, 50);
+    lastTime = now;
+    if (fallingAnim) tickFall(dt);
+    redraw();
+    animId = requestAnimationFrame(loop);
+  })(lastTime);
+}
+
+function randC() { return Math.floor(Math.random() * COLORS.length); }
+
+// ── DROP ───────────────────────────────────────────────────────
+function userDrop() {
+  if (!gameRunning || fallingAnim) return;
+  dropInto(aimCol);
+}
+
+function dropInto(col) {
+  // find lowest empty row in this column
+  let landRow = -1;
+  for (let r = ROWS - 1; r >= 0; r--) {
+    if (board[r][col] === -1) { landRow = r; break; }
+  }
+  if (landRow < 0) return; // column full
+
+  const startY = cellY(0, col) - HH;
+  const endY   = cellY(landRow, col);
+
+  fallingAnim = { col, landRow, color: curColor, y: startY, endY };
+  curColor  = nextColor;
+  nextColor = randC();
+  drawCurrent();
+  drawNext();
+}
+
+const FALL_SPEED = 600; // px/sec
+
+function tickFall(dt) {
+  if (!fallingAnim) return;
+  fallingAnim.y += FALL_SPEED * dt / 1000;
+  if (fallingAnim.y >= fallingAnim.endY) {
+    const { col, landRow, color } = fallingAnim;
+    board[landRow][col] = color;
+    fallingAnim = null;
+
+    // game over check
+    if (board[0].some(v => v !== -1)) { endGame(); return; }
+
+    let pass = 0;
+    let found = true;
+    while (found && pass++ < 30) {
+      found = scanRings();
+      if (found) applyGravity();
+    }
+    if (!found) combo = 0;
+    updateUI();
+  }
+}
+
+// ── GROUP DETECTION (flood-fill, 4+ connected same color) ──────
+function scanRings() {
+  const visited = Array.from({length: ROWS}, () => new Array(COLS).fill(false));
+  const toClear = new Set();
+  let foundAny  = false;
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (visited[r][c] || board[r][c] < 0) continue;
+      const color = board[r][c];
+
+      // flood-fill this connected region
+      const group = [];
+      const stack = [[r, c]];
+      while (stack.length) {
+        const [cr, cc] = stack.pop();
+        if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS) continue;
+        if (visited[cr][cc]) continue;
+        if (board[cr][cc] !== color) continue;
+        visited[cr][cc] = true;
+        group.push([cr, cc]);
+        for (const [nr, nc2] of neighbors(cr, cc)) stack.push([nr, nc2]);
+      }
+
+      if (group.length >= MIN_GROUP) {
+        foundAny = true;
+        for (const [gr, gc2] of group) toClear.add(gr * COLS + gc2);
+        combo++;
+        const pts = group.length * 100 * level * Math.max(combo, 1);
+        score += pts;
+        rings++;
+        if (score > best) { best = score; localStorage.setItem('hf2best', best); }
+        level = Math.floor(rings / 6) + 1;
+
+        // floater near center of group
+        const cr = Math.round(group.reduce((s,[gr])=>s+gr,0)/group.length);
+        const cc = Math.round(group.reduce((s,[,gc2])=>s+gc2,0)/group.length);
+        const label = group.length >= 8 ? `MEGA ×${combo}!` : combo > 1 ? `BLAST ×${combo}!` : `BLAST! +${pts}`;
+        spawnFloater(label, COLORS[color], cellX(cr,cc), cellY(cr,cc));
+        blastFx();
+      }
+    }
+  }
+
+  for (const key of toClear) {
+    board[Math.floor(key / COLS)][key % COLS] = -1;
+  }
+  return foundAny;
+}
+
+
+function applyGravity() {
+  for (let c = 0; c < COLS; c++) {
+    const filled = [];
+    for (let r = 0; r < ROWS; r++) if (board[r][c] !== -1) filled.push(board[r][c]);
+    for (let r = 0; r < ROWS; r++) board[r][c] = -1;
+    const off = ROWS - filled.length;
+    filled.forEach((ci, i) => { board[off + i][c] = ci; });
+  }
+}
+
+// ── DRAW ───────────────────────────────────────────────────────
+function hexPath(c2d, cx, cy, r) {
+  c2d.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = Math.PI / 3 * i + Math.PI / 6; // pointy-top
+    const x = cx + r * Math.cos(a);
+    const y = cy + r * Math.sin(a);
+    i === 0 ? c2d.moveTo(x, y) : c2d.lineTo(x, y);
+  }
+  c2d.closePath();
+}
+
+function drawHexAt(c2d, row, col, colorIdx, alpha) {
+  const cx = cellX(row, col), cy = cellY(row, col);
+  c2d.save();
+  c2d.globalAlpha = alpha ?? 1;
+  if (colorIdx == null || colorIdx < 0) {
+    // empty cell
+    hexPath(c2d, cx, cy, HR - 1);
+    c2d.fillStyle   = '#1e1810';
+    c2d.fill();
+    c2d.strokeStyle = '#2c2212';
+    c2d.lineWidth   = 1;
+    c2d.stroke();
+  } else {
+    const col2 = COLORS[colorIdx];
+    // glow
+    hexPath(c2d, cx, cy, HR + 3);
+    c2d.fillStyle   = col2 + '22';
+    c2d.shadowColor = col2;
+    c2d.shadowBlur  = 14;
+    c2d.fill();
+    c2d.shadowBlur  = 0;
+    // fill
+    hexPath(c2d, cx, cy, HR - 2);
+    c2d.fillStyle   = col2 + 'bb';
+    c2d.shadowColor = col2;
+    c2d.shadowBlur  = 7;
+    c2d.fill();
+    c2d.shadowBlur  = 0;
+    // stroke
+    c2d.strokeStyle = col2;
+    c2d.lineWidth   = 1.5;
+    c2d.stroke();
+    // shine
+    hexPath(c2d, cx, cy, HR - 4);
+    const g = c2d.createRadialGradient(cx, cy - 6, 1, cx, cy, HR - 4);
+    g.addColorStop(0, 'rgba(255,255,255,0.3)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    c2d.fillStyle = g;
+    c2d.fill();
+  }
+  c2d.restore();
+}
+
+function redraw() {
+  ctx.fillStyle = '#1a1410';
+  ctx.fillRect(0, 0, PW, PH);
+
+  // empty grid
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      drawHexAt(ctx, r, c, null);
+
+  // aim column highlight + ghost
+  if (gameRunning && !fallingAnim) {
+    // column tint
+    ctx.save();
+    ctx.globalAlpha = 0.07;
+    ctx.fillStyle   = '#f5a623';
+    for (let r = 0; r < ROWS; r++) {
+      hexPath(ctx, cellX(r, aimCol), cellY(r, aimCol), HR - 1);
+      ctx.fill();
+    }
+    ctx.restore();
+    // ghost at landing row
+    let landRow = -1;
+    for (let r = ROWS - 1; r >= 0; r--) {
+      if (board[r][aimCol] === -1) { landRow = r; break; }
+    }
+    if (landRow >= 0) drawHexAt(ctx, landRow, aimCol, curColor, 0.3);
+  }
+
+  // locked cells
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (board[r][c] >= 0) drawHexAt(ctx, r, c, board[r][c]);
+
+  // group-progress glow drawn ON TOP of cells so it's visible
+  {
+    const visited2 = Array.from({length: ROWS}, () => new Array(COLS).fill(false));
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (visited2[r][c] || board[r][c] < 0) continue;
+        const color = board[r][c];
+        const group = [];
+        const stack = [[r, c]];
+        while (stack.length) {
+          const [cr, cc2] = stack.pop();
+          if (cr < 0 || cr >= ROWS || cc2 < 0 || cc2 >= COLS) continue;
+          if (visited2[cr][cc2]) continue;
+          if (board[cr][cc2] !== color) continue;
+          visited2[cr][cc2] = true;
+          group.push([cr, cc2]);
+          for (const [nr, nc3] of neighbors(cr, cc2)) stack.push([nr, nc3]);
+        }
+        if (group.length >= 2) {
+          // t=0.3 for 2, scales to 1.0 at MIN_GROUP
+          const t = Math.min(0.3 + (group.length - 2) / (MIN_GROUP - 2) * 0.7, 1.0);
+          for (const [gr, gc3] of group) {
+            ctx.save();
+            ctx.globalAlpha = t * 0.55;
+            ctx.shadowColor = COLORS[color];
+            ctx.shadowBlur  = 20;
+            hexPath(ctx, cellX(gr, gc3), cellY(gr, gc3), HR + 4);
+            ctx.strokeStyle = COLORS[color];
+            ctx.lineWidth   = 2.5;
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+      }
+    }
+  }
+
+  // falling animation
+  if (fallingAnim) {
+    const cx = cellX(0, fallingAnim.col);
+    const cy = fallingAnim.y;
+    // draw at exact pixel y
+    ctx.save();
+    const col2 = COLORS[fallingAnim.color];
+    hexPath(ctx, cx, cy, HR + 3);
+    ctx.fillStyle = col2 + '22'; ctx.shadowColor = col2; ctx.shadowBlur = 14; ctx.fill();
+    ctx.shadowBlur = 0;
+    hexPath(ctx, cx, cy, HR - 2);
+    ctx.fillStyle = col2 + 'bb'; ctx.shadowColor = col2; ctx.shadowBlur = 7; ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = col2; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.restore();
+  }
+
+  // danger line (row 0 bottom edge)
+  const dangerY = cellY(0, 0) + HR;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,60,60,0.35)';
+  ctx.lineWidth   = 1.5;
+  ctx.setLineDash([4, 6]);
+  ctx.beginPath();
+  ctx.moveTo(0, dangerY);
+  ctx.lineTo(PW, dangerY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+// ── CURRENT + NEXT PREVIEW ─────────────────────────────────────
+function drawHexOnCanvas(c2d, colorIdx, w, h) {
+  c2d.fillStyle = '#1c1610';
+  c2d.fillRect(0, 0, w, h);
+  const col2 = COLORS[colorIdx];
+  const cx = w/2, cy = h/2;
+  hexPath(c2d, cx, cy, HR + 3);
+  c2d.fillStyle = col2 + '22'; c2d.shadowColor = col2; c2d.shadowBlur = 14; c2d.fill();
+  c2d.shadowBlur = 0;
+  hexPath(c2d, cx, cy, HR - 2);
+  c2d.fillStyle = col2 + 'bb'; c2d.shadowColor = col2; c2d.shadowBlur = 7; c2d.fill();
+  c2d.shadowBlur = 0;
+  c2d.strokeStyle = col2; c2d.lineWidth = 1.5; c2d.stroke();
+  // shine
+  hexPath(c2d, cx, cy, HR - 4);
+  const g = c2d.createRadialGradient(cx, cy-6, 1, cx, cy, HR-4);
+  g.addColorStop(0,'rgba(255,255,255,0.3)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  c2d.fillStyle = g; c2d.fill();
+}
+
+function drawCurrent() { drawHexOnCanvas(cctx, curColor, 82, 82); }
+function drawNext()    { drawHexOnCanvas(nctx, nextColor, 82, 82); }
+
+// ── UI ─────────────────────────────────────────────────────────
+function updateUI() {
+  document.getElementById('el-sc').textContent = score.toLocaleString();
+  document.getElementById('el-bs').textContent = best.toLocaleString();
+  document.getElementById('el-lv').textContent = level;
+  document.getElementById('el-rg').textContent = rings;
+  document.getElementById('combo-val').textContent = '×' + Math.max(combo, 1);
+  const prog = rings % 5 === 0 && rings > 0 ? 5 : rings % 5;
+  const pip  = document.getElementById('pips');
+  pip.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const d = document.createElement('div');
+    d.className = 'pip' + (i < prog ? ' on' : '');
+    pip.appendChild(d);
+  }
+}
+
+function blastFx() {
+  const el = document.getElementById('blast-ov');
+  el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+  const cv = document.getElementById('combo-val');
+  cv.classList.remove('pop'); void cv.offsetWidth; cv.classList.add('pop');
+  setTimeout(() => cv.classList.remove('pop'), 130);
+}
+
+function spawnFloater(txt, col2, x, y) {
+  const w  = document.getElementById('board-wrap');
+  const el = document.createElement('div');
+  el.className   = 'floater';
+  el.style.color = col2;
+  el.style.left  = Math.max(4, Math.min(x - 30, PW - 100)) + 'px';
+  el.style.top   = Math.max(4, y - 15) + 'px';
+  el.textContent = txt;
+  w.appendChild(el);
+  setTimeout(() => el.remove(), 850);
+}
+
+// ── INPUT ──────────────────────────────────────────────────────
+function onKey(e) {
+  if (!gameRunning) return;
+  if (e.code === 'ArrowLeft')  { e.preventDefault(); aimCol = Math.max(0, aimCol - 1); }
+  if (e.code === 'ArrowRight') { e.preventDefault(); aimCol = Math.min(COLS-1, aimCol + 1); }
+  if (e.code === 'Space' || e.code === 'ArrowDown') { e.preventDefault(); userDrop(); }
+  const n = parseInt(e.key);
+  if (n >= 1 && n <= COLS) { aimCol = n - 1; userDrop(); }
+}
+
+function mbAim(dir) {
+  aimCol = Math.max(0, Math.min(COLS - 1, aimCol + dir));
+  mbTimer = setInterval(() => {
+    aimCol = Math.max(0, Math.min(COLS - 1, aimCol + dir));
+  }, 130);
+}
+function mbStop() { clearInterval(mbTimer); mbTimer = null; }
+
+// ── END ────────────────────────────────────────────────────────
+function endGame() {
+  gameRunning = false;
+  cancelAnimationFrame(animId);
+  document.removeEventListener('keydown', onKey);
+  if (score > best) { best = score; localStorage.setItem('hf2best', best); }
+  document.getElementById('ov-sc').textContent         = score.toLocaleString();
+  document.getElementById('ov-body').style.display     = 'none';
+  document.getElementById('ov-res').style.display      = 'block';
+  document.getElementById('ov').classList.remove('hidden');
+}
+
+window.addEventListener('load', setup);
+</script>
+</body>
+</html>
